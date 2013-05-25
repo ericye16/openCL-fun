@@ -58,7 +58,7 @@ main(void)
         CL_DEVICE_TYPE_CPU,
         cprops,
         NULL,
-        NULL,
+        NULL,//fjdksljfdksljfdsklj
         &err);
     checkErr(err, "Context::Context()");
 
