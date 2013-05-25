@@ -64,14 +64,22 @@ main(void)
 
     //allocate an OpenCL Buffer to hold the result of the kernel to be run
     //on the device. 
-    char * outH = new char[hw.length() + 1];
+    int * outH = new int[13];
+    int inp[] = {1, 2, 3,4,5,6,7,8,9,10,11,12,13};
     //we'll allocate on the host and ask OpenCL to use this directly, with
     //CL_MEM_USE_HOST_PTR
     cl::Buffer outCL(
         context,
-        CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR,
-        hw.length() + 1,
+        CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
+        13,
         outH,
+        &err);
+
+    cl::Buffer inCL(
+        context,
+        CL_MEM_COPY_HOST_PTR,
+        13,
+        inp,
         &err);
     checkErr(err, "Buffer::Buffer()");
 
@@ -81,6 +89,23 @@ main(void)
     //we query the context to get a handle for the device
     devices = context.getInfo<CL_CONTEXT_DEVICES>();
     checkErr(devices.size() > 0 ? CL_SUCCESS : -1, "devices.size() > 0");
+    
+        
+    //all device computations are done using a command queue, a virtual
+    //interface for each device in question (one cqueue per device)
+    cl::CommandQueue queue(context, devices[0], 0, &err);
+    checkErr(err, "CommandQueue::CommandQueue()");
+    cl::Event event;
+    err = queue.enqueueWriteBuffer(
+        inCL,
+        CL_TRUE,
+        0,
+        13,
+        inp,
+        NULL,
+        &event);
+    checkErr(err, "ComamndQueue::enqueueWriteBuffer()");
+    event.wait();
 
     //now we need to load and build the compute program (thing to run on device)
     std::ifstream file("lesson1_kernels.cl");
@@ -98,6 +123,7 @@ main(void)
     err = program.build(devices,"");
     checkErr(err, "Program::build()");
     
+
     //a given program can have many entry points called kernels
     //we have to build these kernel objects
     //The string we use ("hello") should be the name of a __kernel function
@@ -108,23 +134,20 @@ main(void)
     //for a particular argument
     //note that outCL was defined as a buffer earlier
     err = kernel.setArg(0, outCL);
+    err = kernel.setArg(1, inCL);
     checkErr(err, "Kernel::setArg()");
     
     /*
      * TIME TO ACTUALLY DO SHIZ
      */
+
     
-    //all device computations are done using a command queue, a virtual
-    //interface for each device in question (one cqueue per device)
-    cl::CommandQueue queue(context, devices[0], 0, &err);
-    checkErr(err, "CommandQueue::CommandQueue()");
-    cl::Event event;
     //once you have a commandqueue, you can queue kernels using a queue.enqueueNDRangeKernel
     //You can choose the number of work-items per work-group, and dimensions
     err = queue.enqueueNDRangeKernel(
         kernel,
         cl::NullRange,//dimensions
-        cl::NDRange(hw.length()+1),//total number of work-items (in dimensions)
+        cl::NDRange(13),//total number of work-items (in dimensions)
         cl::NDRange(1, 1),//number of work-items per work group (in dimensions)
         NULL,
         &event);//so we can query the status of the command (to see if it is completed)
@@ -137,10 +160,13 @@ main(void)
         outCL,
         CL_TRUE,
         0,
-        hw.length()+1,
+        13,
         outH);
     checkErr(err, "ComamndQueue::enqueueReadBuffer()");
     //and print it out
-    std::cout << outH;
+    for (int i = 0; i < 13; i++) {
+        std::cout << outH[i] << " ";
+    }
+    //std::cout << *outH;
     return EXIT_SUCCESS;
 }
