@@ -1,13 +1,20 @@
+#define CHANGE_X 1
+#define CHANGE_Z 2
+#define CHANGE_Y 4
+
 __constant int xSize = 32;
 __constant int ySize = 32;
 __constant int zSize = 32;
 __constant float d = 1.f;
 __constant float dt = 0.01f;
+__constant float xMax = 40;
+__constant float zMax = 40;
 
 int lin(int x, int y, int z);
 float poly6(float r);
 float poly6_grad(float r);
 float poly6_laplace(float r);
+int boundaries(float3 position);
 
 __kernel 
 void fluids(
@@ -18,7 +25,9 @@ void fluids(
     __global float3 * pressure,
     __global float * gasConstant,
     __global float * mu,
-    __global float3 * gravity)
+    __global float3 * gravity,
+    __global float3 * finalVelocity,
+    __global float3 * finalPosition)
 {
     int xIdx = get_global_id(0);
     int yIdx = get_global_id(1);
@@ -90,6 +99,21 @@ void fluids(
     nextVelocity = currentVelocity + f_total / currentLocalDensity;
     
     nextPosition = currentPosition + nextVelocity * dt;
+    
+    __private int boundaryChange;
+    boundaryChange = boundaries(nextPosition);
+    if (boundaryChange & CHANGE_X) {
+        nextVelocity.x *= -1;
+    }
+    if (boundaryChange & CHANGE_Y) {
+        nextVelocity.y *= -1;
+    }
+    if (boundaryChange & CHANGE_Z) {
+        nextVelocity.z *= -1;
+    }
+    
+    finalVelocity[me] = nextVelocity;
+    finalPosition[me] = nextPosition;    
 }
 
 int lin(int x, int y, int z) {
@@ -119,6 +143,20 @@ float poly6_laplace(float r) {
     else {
         return 0;
     }
+}
+
+int boundaries(float3 position) {
+    int toReturn = 0;
+    if (position.x > xMax || position.x < 0) {
+        toReturn |= CHANGE_X;
+    }
+    if (position.y < 0) {
+        toReturn |= CHANGE_Y;
+    }
+    if (position.z > zMax || position.z < 0) {
+        toReturn |= CHANGE_Z;
+    }
+    return toReturn;    
 }
 
 
