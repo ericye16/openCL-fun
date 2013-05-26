@@ -70,15 +70,15 @@ main(void)
     //CL_MEM_USE_HOST_PTR
     cl::Buffer outCL(
         context,
-        CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR,
+        CL_MEM_WRITE_ONLY | CL_MEM_USE_HOST_PTR,
         13,
         outH,
         &err);
 
     cl::Buffer inCL(
         context,
-        CL_MEM_COPY_HOST_PTR,
-        13,
+        CL_MEM_READ_ONLY,
+        (size_t)13,
         inp,
         &err);
     checkErr(err, "Buffer::Buffer()");
@@ -161,9 +161,14 @@ main(void)
         CL_TRUE,
         0,
         13,
-        outH);
+        outH,
+        NULL,
+        &event);
     checkErr(err, "ComamndQueue::enqueueReadBuffer()");
+    event.wait();
     //and print it out
+    
+    
     for (int i = 0; i < 13; i++) {
         std::cout << outH[i] << " ";
     }
