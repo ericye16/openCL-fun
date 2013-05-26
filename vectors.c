@@ -7,24 +7,44 @@
 // OpenCL includes
 #include <CL/cl.h>
 
+#define FLUID_MASS 1.0f //highly arbitrary
 
+const int xSize = 32;
+const int ySize = 32;
+const int zSize = 32;
+
+const cl_float3 gravity = {0.f, -9.8f, 0.f};
+
+int lin(int x, int y, int z); 
+
+void initialize(cl_float3 * position, cl_float3 * velocity, cl_float * mass);
 
 
 int main() {
+    fprintf(stderr, "asdf\n");
+    // Elements in each array
 
+    int elements;
+
+    elements = xSize * ySize * zSize;
     // OpenCL kernel
-    FILE * kernelFile;
-    kernelFile = fopen("vectors_kernel.cl", "rb");
+    // This code executes on the OpenCL host
+    FILE * kernelFile = NULL;
+    kernelFile = fopen("vectors_kernel.cl", "r");
     fseek(kernelFile, 0L, SEEK_END);
     size_t programSize;
     programSize = ftell(kernelFile);
     rewind(kernelFile);
+    fprintf(stderr,"Kernel file is %i bytes\n", programSize);
 
     char * kernelCode;
     kernelCode = (char*)malloc(programSize + 1);
+    kernelCode[programSize] = '\0';
     fread(kernelCode, sizeof(char), programSize, kernelFile);
     fclose(kernelFile);
-    // This code executes on the OpenCL host
+    
+    fprintf(stderr,"Completed reading kernel file.\n");
+
     
     // Host data
     
@@ -32,36 +52,26 @@ int main() {
     cl_float3 *position = NULL;
     cl_float3 *velocity_final = NULL;
     cl_float3 *position_final = NULL;
-    
-    // Elements in each array
-    const int elements = 32768;   
-    cl_float * result_dot = NULL;
+    cl_float *mass = NULL;
+    //cl_float * result_dot = NULL;
     
     // Compute the size of the data 
-    size_t datasize = sizeof(int)*elements;
     size_t datasize_vel = sizeof(cl_float3) * elements;
     size_t datasize_pos = sizeof(cl_float3) * elements;
+    size_t datasize_pressure = sizeof(cl_float) * elements;
     size_t datasize_result = sizeof(float) * elements;
 
     // Allocate space for input/output data
-    /*A = (int*)malloc(datasize);
-    B = (int*)malloc(datasize);
-    C = (int*)malloc(datasize);*/
+    
+    //initialize our data
     position = (cl_float3*)malloc(datasize_pos);
     velocity = (cl_float3*)malloc(datasize_vel);
-    result_dot = (cl_float*)malloc(datasize_result);
+    mass = (cl_float*)malloc(datasize_pressure);
+    //result_dot = (cl_float*)malloc(datasize_result);
+    
     // Initialize the input data
-    for(int i = 0; i < elements; i++) {
-        /*A[i] = i;
-        B[i] = i;*/
-        position[i].x = i;
-        position[i].y = i;
-        position[i].z = i;
-        
-        velocity[i].x = -i;
-        velocity[i].y = -i;
-        velocity[i].y = -i;
-    }
+    initialize(position, velocity, mass);
+    fprintf(stderr, "Initialized position and velocity.\n");
 
     // Use this to check the output of each API call`
     cl_int status;  
@@ -145,6 +155,7 @@ int main() {
         devices[0], 
         0, 
         &status);
+    fprintf(stderr, "Context and command queues created.\n");
 
     //-----------------------------------------------------
     // STEP 5: Create device buffers
@@ -158,6 +169,8 @@ int main() {
     cl_mem bufferVel;
     cl_mem bufferPos;
     cl_mem bufferResult;
+    cl_mem bufferVelFinal;
+    cl_mem bufferPosFinal;
 
     // Use clCreateBuffer() to create a buffer object (d_A) 
     // that will contain the data from the host array A
@@ -203,8 +216,12 @@ int main() {
         CL_MEM_WRITE_ONLY,
         datasize_result,
         NULL,
-        &status);    
+        &status);
     
+    
+    fprintf(stderr, "Buffers created\n");
+    
+        
     //-----------------------------------------------------
     // STEP 6: Write host data to device buffers
     //----------------------------------------------------- 
@@ -244,6 +261,9 @@ int main() {
         0,
         NULL,
         NULL);
+    if (status != CL_SUCCESS) {
+        fprintf(stderr, "Could not write buffer");
+    }
     
     status = clEnqueueWriteBuffer(
         cmdQueue,
@@ -255,6 +275,12 @@ int main() {
         0,
         NULL,
         NULL);
+    if (status != CL_SUCCESS) {
+        fprintf(stderr, "Could not write buffer");
+    }
+    
+    
+    fprintf(stderr, "Buffers written\n");
 
     //-----------------------------------------------------
     // STEP 7: Create and compile the program
@@ -268,6 +294,8 @@ int main() {
         NULL, 
         &status);
     free(kernelCode);
+    
+    fprintf(stderr, "Kernel code created and freed\n");
 
     // Build (compile) the program for the devices with
     // clBuildProgram()
@@ -290,7 +318,8 @@ int main() {
 
     // Use clCreateKernel() to create a kernel from the 
     // vector addition function (named "vecadd")
-    kernel = clCreateKernel(program, "vecadd", &status);
+    kernel = clCreateKernel(program, "fluids", &status);
+    fprintf(stderr, "Kernel created\n");
 
     //-----------------------------------------------------
     // STEP 9: Set the kernel arguments
@@ -314,6 +343,8 @@ int main() {
         2, 
         sizeof(cl_mem), 
         &bufferResult);
+    
+    fprintf(stderr, "Kernel arguments set\n");
 
     //-----------------------------------------------------
     // STEP 10: Configure the work-item structure
@@ -324,9 +355,18 @@ int main() {
     // execution. A workgroup size (local work size) is not 
     // required, 
     // but can be used.
-    size_t globalWorkSize[1];    
+    cl_uint numDims = 3;
+    size_t globalWorkSize[numDims];    
     // There are 'elements' work-items 
-    globalWorkSize[0] = elements;
+    globalWorkSize[0] = xSize;
+    globalWorkSize[1] = ySize;
+    globalWorkSize[2] = zSize;
+    size_t localWorkSize[numDims];
+    localWorkSize[0] = 8;
+    localWorkSize[1] = 8;
+    localWorkSize[2] = 8;
+    
+    fprintf(stderr, "Local and global workgroup sizes set\n");
 
     //-----------------------------------------------------
     // STEP 11: Enqueue the kernel for execution
@@ -339,13 +379,17 @@ int main() {
     status = clEnqueueNDRangeKernel(
         cmdQueue, 
         kernel, 
-        1, 
+        numDims, 
         NULL, 
         globalWorkSize, 
-        NULL, 
+        localWorkSize, 
         0, 
         NULL, 
         NULL);
+    if (status != CL_SUCCESS) {
+        fprintf(stderr, "Kernels not launched.");
+    }
+    fprintf(stderr, "Kernel launched and run.\n");
 
     //-----------------------------------------------------
     // STEP 12: Read the output buffer back to the host
@@ -354,7 +398,7 @@ int main() {
     // Use clEnqueueReadBuffer() to read the OpenCL output  
     // buffer (bufferC) 
     // to the host output array (C)
-    clEnqueueReadBuffer(
+    /*clEnqueueReadBuffer(
         cmdQueue, 
         bufferResult, 
         CL_TRUE, 
@@ -363,17 +407,17 @@ int main() {
         result_dot, 
         0, 
         NULL, 
-        NULL);
+        NULL);*/
 
     // Verify the output
     bool result = true;
-    for(int i = 0; i < elements; i++) {
+    /*for(int i = 0; i < elements; i++) {
         printf("%f ",result_dot[i]);
-        /*if(C[i] != i+i) {
+        if(C[i] != i+i) {
             result = false;
             break;
-        }*/
-    }
+        }
+    }*/
     /*if(result) {
         printf("Output is correct\n");
     } else {
@@ -392,13 +436,45 @@ int main() {
     clReleaseMemObject(bufferB);
     clReleaseMemObject(bufferC);*/
     clReleaseContext(context);
+    fprintf(stderr, "Released kernel, program and queue\n");
 
     // Free host resources
     free(velocity);
+    fprintf(stderr, "Released velocity\n");
     free(position);
-    free(position_final);
-    free(velocity_final);
-    free(result_dot);
+    fprintf(stderr, "Released position\n");
+    free(mass);
+    fprintf(stderr, "Released mass\n");
+    /*free(position_final);
+    free(velocity_final);*/
+
     free(platforms);
     free(devices);
+    fprintf(stderr, "End of program.\n");
+    
+    
+    return 0;
+}
+
+int lin(int x, int y, int z)
+{
+    return z * xSize * ySize + xSize * y + x;
+}
+
+void initialize(cl_float3 * position, cl_float3 * velocity, cl_float * mass) {
+    for(int x = 0; x < xSize; x++) {
+        for (int y = 0; y < ySize; y++) {
+            for (int z = 0; z < zSize; z++) {
+                position[lin(x,y,z)].x = x;
+                position[lin(x,y,z)].y = y;
+                position[lin(x,y,z)].z = z;
+                
+                velocity[lin(x,y,z)].x = 0;
+                velocity[lin(x,y,z)].y = 0;
+                velocity[lin(x,y,z)].z = 0;
+                
+                mass[lin(x,y,z)] = FLUID_MASS;
+            }
+        }
+    }
 }
