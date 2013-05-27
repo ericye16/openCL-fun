@@ -7,15 +7,15 @@
 // OpenCL includes
 #include <CL/cl.h>
 
-#define FLUID_MASS 1.0f //highly arbitrary
+#define FLUID_MASS 13.f //highly arbitrary
 
-const int xSize = 32;
-const int ySize = 32;
-const int zSize = 32;
-const cl_float mu = 0.7f;
-const cl_float gasConstant = 0.8f;
+const int xSize = 8;
+const int ySize = 8;
+const int zSize = 8;
+const cl_float mu = 0.2f;
+const cl_float gasConstant = .8f;
 
-const cl_float3 gravity = {0.f, -9.8f, 0.f};
+const cl_float3 gravity = {0.f, -1.f, 0.f};
 
 int lin(int x, int y, int z); 
 
@@ -330,7 +330,7 @@ int main() {
     
     status = clEnqueueWriteBuffer(
         cmdQueue,
-        bufferMu,
+        bufferGasConstant,
         CL_FALSE,
         0,
         sizeof(cl_float),
@@ -559,20 +559,21 @@ int main() {
         NULL);
     checkErr(status);
 
+    cl_float3 thisPos;
+    cl_float3 thisVel;
     // Verify the output
-    bool result = true;
-    /*for(int i = 0; i < elements; i++) {
-        printf("%f ",result_dot[i]);
-        if(C[i] != i+i) {
-            result = false;
-            break;
+    for (int x = 0; x < xSize; x++) {
+        for (int y = 0; y < ySize; y++) {
+            for (int z = 0; z < zSize; z++) {
+                thisPos = position_final[lin(x, y, z)];
+                thisVel = velocity_final[lin(x, y, z)];
+                printf("(%f, %f, %f) at (%f, %f, %f) from (%i, %i, %i)\n",
+                    thisPos.x, thisPos.y, thisPos.z,
+                    thisVel.x, thisVel.y, thisVel.z,
+                    x, y, z);
+            }
         }
-    }*/
-    /*if(result) {
-        printf("Output is correct\n");
-    } else {
-        printf("Output is incorrect\n");
-    }*/
+    }
 
     //-----------------------------------------------------
     // STEP 13: Release OpenCL resources

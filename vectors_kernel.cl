@@ -2,18 +2,19 @@
 #define CHANGE_Z 2
 #define CHANGE_Y 4
 
-__constant int xSize = 32;
-__constant int ySize = 32;
-__constant int zSize = 32;
-__constant float d = 1.f;
+__constant int xSize = 8;
+__constant int ySize = 8;
+__constant int zSize = 8;
+__constant float d = 32.f;
 __constant float dt = 0.01f;
 __constant float xMax = 40;
 __constant float zMax = 40;
+__constant float envDensity = 0.1f;
 
 int lin(int x, int y, int z);
 float poly6(float r);
-float poly6_grad(float r);
-float poly6_laplace(float r);
+float spiky_grad(float r);
+float viscosity_laplace(float r);
 int boundaries(float3 position);
 
 __kernel 
@@ -50,13 +51,15 @@ void fluids(
     __private float currentLocalDensity;
     currentLocalDensity = 0;
     for (int i = 0; i < xSize * ySize * zSize; i++) {
-        currentLocalDensity += mass[i] * poly6(fabs(fast_distance(currentPosition, initialPosition[i])));
+        currentLocalDensity += mass[i] * poly6(fast_distance(currentPosition, initialPosition[i])   );
+        //printf("%f ", mass[i]);
     }
+    //printf("CLD: %.15f\n", currentLocalDensity);
     density[me] = currentLocalDensity;
-    barrier(CLK_GLOBAL_MEM_FENCE);
     
-    currentPressure = *gasConstant * currentLocalDensity;
+    currentPressure = *gasConstant * (currentLocalDensity - envDensity);
     pressure[me] = currentPressure;
+    //printf("CLP: %.15f\n", currentPressure);
     barrier(CLK_GLOBAL_MEM_FENCE);
     
     __private float their_mass;
@@ -68,27 +71,30 @@ void fluids(
         their_mass = mass[i];
         their_position = initialPosition[i];
         their_pressure = pressure[i];
-        f_pressure.x -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * poly6_grad(
+        f_pressure.x -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
             fabs(currentPosition.x - their_position.x)
         );
-        f_pressure.y -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * poly6_grad(
+        f_pressure.y -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
             fabs(currentPosition.y - their_position.y)
         );
-        f_pressure.z -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * poly6_grad(
+        f_pressure.z -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
             fabs(currentPosition.z - their_position.z)
-        );
+        );      
         
-        
-        f_viscosity.x += their_mass * (their_velocity.x - currentVelocity.x) / their_density * poly6_laplace(
+        f_viscosity.x += their_mass * (their_velocity.x - currentVelocity.x) / their_density * viscosity_laplace(
             fabs(currentPosition.x - their_position.x)
         );
-        f_viscosity.y += their_mass * (their_velocity.y - currentVelocity.y) / their_density * poly6_laplace(
+        f_viscosity.y += their_mass * (their_velocity.y - currentVelocity.y) / their_density * viscosity_laplace(
             fabs(currentPosition.y - their_position.y)
         );
-        f_viscosity.z += their_mass * (their_velocity.z - currentVelocity.z) / their_density * poly6_laplace(
+        f_viscosity.z += their_mass * (their_velocity.z - currentVelocity.z) / their_density * viscosity_laplace(
             fabs(currentPosition.z - their_position.z)
         );
     }
+    /*printf("Pressure: (%f, %f, %f)\n",
+        f_pressure.x,
+        f_pressure.y,
+        f_pressure.z);*/
     f_viscosity *= our_mu;
     
     __private float3 f_gravity;
@@ -99,7 +105,7 @@ void fluids(
     f_total = f_pressure + f_gravity + f_viscosity;
     nextVelocity = currentVelocity + f_total / currentLocalDensity * dt;
     
-    nextPosition = currentPosition + nextVelocity * dt;
+    nextPosition = currentPosition + 0.5f * (nextVelocity + currentVelocity) * dt;
     
     __private int boundaryChange;
     boundaryChange = boundaries(nextPosition);
@@ -128,27 +134,28 @@ float poly6(float r) {
     else return 0;
 }
 
-float poly6_grad(float r) {
+float spiky_grad(float r) {
     if (r >= 0 && r <= d) {
-        return -945 / (32 * M_PI_F * pow(d, 9)) * r * pow(pow(d, 2) - pow(d, 2), 2);
+        return -45 / (M_PI_F * pow(d, 6)) * pow(d - r, 2);
     }
     else {
         return 0;
     }
 }
 
-float poly6_laplace(float r) {
+float viscosity_laplace(float r) {
     if (r >= 0 && r <= d) {
-        return -945 / (32 * M_PI_F * pow(d, 9)) * (pow(d, 4) - 6 * pow(d, 2) * pow(r, 2) + 5 * pow(r, 4));
+        return 45 / (M_PI_F * pow(d, 5)) * (1 - r/d);
     }
     else {
         return 0;
     }
 }
+
 
 int boundaries(float3 position) {
     int toReturn = 0;
-    if (position.x > xMax || position.x < 0) {
+    /*if (position.x > xMax || position.x < 0) {
         toReturn |= CHANGE_X;
     }
     if (position.y < 0) {
@@ -156,7 +163,7 @@ int boundaries(float3 position) {
     }
     if (position.z > zMax || position.z < 0) {
         toReturn |= CHANGE_Z;
-    }
+    }*/
     return toReturn;    
 }
 
