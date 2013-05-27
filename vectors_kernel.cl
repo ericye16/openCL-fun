@@ -22,7 +22,7 @@ void fluids(
     __global float3 * initialPosition, //1
     __constant float * mass, //2
     __global float * density, //3
-    __global float3 * pressure, //4
+    __global float * pressure, //4
     __constant float * gasConstant, //5
     __constant float * mu, //6
     __constant float3 * gravity, //7
@@ -67,6 +67,7 @@ void fluids(
     for (int i = 0; i < xSize * ySize * zSize; i++) {
         their_mass = mass[i];
         their_position = initialPosition[i];
+        their_pressure = pressure[i];
         f_pressure.x -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * poly6_grad(
             fabs(currentPosition.x - their_position.x)
         );

@@ -67,7 +67,6 @@ int main() {
     size_t datasize_vel = sizeof(cl_float3) * elements;
     size_t datasize_pos = sizeof(cl_float3) * elements;
     size_t datasize_pressure = sizeof(cl_float) * elements;
-    size_t datasize_result = sizeof(float) * elements;
 
     // Allocate space for input/output data
     
@@ -151,6 +150,7 @@ int main() {
         NULL, 
         NULL, 
         &status);
+    checkErr(status);
 
     //-----------------------------------------------------
     // STEP 4: Create a command queue
@@ -166,6 +166,7 @@ int main() {
         devices[0], 
         0, 
         &status);
+    checkErr(status);
     fprintf(stderr, "Context and command queues created.\n");
 
     //-----------------------------------------------------
@@ -190,14 +191,14 @@ int main() {
     
     bufferVel = clCreateBuffer(
         context,
-        CL_MEM_READ_ONLY,
+        CL_MEM_READ_WRITE,
         datasize_vel,
         NULL,
         &status);
     checkErr(status);
     bufferPos = clCreateBuffer(
         context,
-        CL_MEM_READ_ONLY,
+        CL_MEM_READ_WRITE,
         datasize_pos,
         NULL,
         &status);
@@ -205,7 +206,7 @@ int main() {
     
     bufferVelFinal = clCreateBuffer(
         context,
-        CL_MEM_READ_WRITE,
+        CL_MEM_WRITE_ONLY,
         datasize_vel,
         NULL,
         &status);
@@ -213,8 +214,8 @@ int main() {
     checkErr(status);
     bufferPosFinal = clCreateBuffer(
         context,
-        CL_MEM_READ_WRITE,
-        datasize_vel,
+        CL_MEM_WRITE_ONLY,
+        datasize_pos,
         NULL,
         &status);
         
@@ -309,11 +310,50 @@ int main() {
         CL_FALSE,
         0,
         datasize_pressure,
-        pressure,
+        mass,
         0,
         NULL,
         NULL);
-    checkErr(status);    
+    checkErr(status);
+    
+    status = clEnqueueWriteBuffer(
+        cmdQueue,
+        bufferMu,
+        CL_FALSE,
+        0,
+        sizeof(cl_float),
+        &mu,
+        0,
+        NULL,
+        NULL);
+    checkErr(status);
+    
+    status = clEnqueueWriteBuffer(
+        cmdQueue,
+        bufferMu,
+        CL_FALSE,
+        0,
+        sizeof(cl_float),
+        &gasConstant,
+        0,
+        NULL,
+        NULL);
+    checkErr(status);
+    
+    status = clEnqueueWriteBuffer(
+        cmdQueue,
+        bufferGravity,
+        CL_FALSE,
+        0,
+        sizeof(cl_float3),
+        &gravity,
+        0,
+        NULL,
+        NULL);
+    checkErr(status);
+    
+    
+        
     
     fprintf(stderr, "Buffers written\n");
 
@@ -474,7 +514,7 @@ int main() {
         numDims, 
         NULL, 
         globalWorkSize, 
-        localWorkSize, 
+        NULL, 
         0, 
         NULL, 
         &event);
@@ -505,7 +545,19 @@ int main() {
         NULL, 
         NULL);
     checkErr(status);
-    fprintf(stderr, "Buffer read out\n");
+    fprintf(stderr, "Position read out\n");
+    
+    status = clEnqueueReadBuffer(
+        cmdQueue,
+        bufferVelFinal,
+        CL_TRUE,
+        0,
+        datasize_vel,
+        velocity_final,
+        0,
+        NULL,
+        NULL);
+    checkErr(status);
 
     // Verify the output
     bool result = true;
@@ -553,9 +605,11 @@ int main() {
     free(mass);
     fprintf(stderr, "Released mass\n");
     free(position_final);
+    fprintf(stderr, "Released final position\n");
     free(velocity_final);
-    free(mass);
+    fprintf(stderr, "Released final velocity\n");
     free(pressure);
+    fprintf(stderr, "Released pressure\n");
 
     free(platforms);
     free(devices);
