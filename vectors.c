@@ -514,7 +514,7 @@ int main() {
         numDims, 
         NULL, 
         globalWorkSize, 
-        NULL, 
+        localWorkSize, 
         0, 
         NULL, 
         &event);

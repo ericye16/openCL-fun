@@ -1,6 +1,7 @@
 #define CHANGE_X 1
 #define CHANGE_Z 2
 #define CHANGE_Y 4
+#define EPSILON 0.000000001f
 
 __constant int xSize = 8;
 __constant int ySize = 8;
@@ -36,12 +37,13 @@ void fluids(
     int me = lin(xIdx, yIdx, zIdx);
     __private float3 currentPosition = initialPosition[lin(xIdx, yIdx, zIdx)];
     __private float3 currentVelocity = initialVelocity[lin(xIdx, yIdx, zIdx)];
+    //printf("Vel: (%f, %f, %f)\n", currentVelocity.x, currentVelocity.y, currentVelocity.z);
     
-    __private float3 nextVelocity;
-    __private float3 nextPosition;
+    __private float3 nextVelocity = {0, 0, 0};
+    __private float3 nextPosition = {0, 0, 0};
     __private float currentPressure = 0;
     __private float3 f_pressure = {0, 0, 0};
-    __private float3 f_viscosity;
+    __private float3 f_viscosity = {0, 0, 0};
     __private float our_mu = * mu;
     
     /*let's find the density.
@@ -49,7 +51,7 @@ void fluids(
     it's the sum of all the nearby masses multiplied by the smoothing function.
     */
     __private float currentLocalDensity;
-    currentLocalDensity = 0;
+    currentLocalDensity = EPSILON;
     for (int i = 0; i < xSize * ySize * zSize; i++) {
         currentLocalDensity += mass[i] * poly6(fast_distance(currentPosition, initialPosition[i])   );
         //printf("%f ", mass[i]);
@@ -62,39 +64,49 @@ void fluids(
     //printf("CLP: %.15f\n", currentPressure);
     barrier(CLK_GLOBAL_MEM_FENCE);
     
-    __private float their_mass;
-    __private float3 their_position;
-    __private float their_pressure;
-    __private float their_density;
-    __private float3 their_velocity;
+    __private float their_mass = 0;
+    __private float3 their_position = {0, 0, 0};
+    __private float their_pressure = 0;
+    __private float their_density = 0;
+    __private float3 their_velocity = {0, 0, 0};
+    __private float dis = 0;
     for (int i = 0; i < xSize * ySize * zSize; i++) {
         their_mass = mass[i];
         their_position = initialPosition[i];
         their_pressure = pressure[i];
+        their_density = density[i];
+        dis = fast_distance(currentPosition, their_position);
         f_pressure.x -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
-            fabs(currentPosition.x - their_position.x)
+            dis
         );
         f_pressure.y -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
-            fabs(currentPosition.y - their_position.y)
+            dis
         );
         f_pressure.z -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
-            fabs(currentPosition.z - their_position.z)
+            dis
         );      
         
         f_viscosity.x += their_mass * (their_velocity.x - currentVelocity.x) / their_density * viscosity_laplace(
-            fabs(currentPosition.x - their_position.x)
+            dis
         );
+        //printf("%f ", f_viscosity.x);//Debug viscosity in x
+        //printf("%f ", their_density);
         f_viscosity.y += their_mass * (their_velocity.y - currentVelocity.y) / their_density * viscosity_laplace(
-            fabs(currentPosition.y - their_position.y)
+            dis
         );
+        //printf("%f ", f_viscosity.y);//Debug viscosity in y
         f_viscosity.z += their_mass * (their_velocity.z - currentVelocity.z) / their_density * viscosity_laplace(
-            fabs(currentPosition.z - their_position.z)
+            dis
         );
+        //printf("Vis: (%f, %f, %f)\n", f_viscosity.x, f_viscosity.y, f_viscosity.z);
+        //printf("Delta_Vel: (%f, %f, %f)\n", their_velocity.x - currentVelocity.x, their_velocity.y - currentVelocity.y, their_velocity.z - currentVelocity.z);//Debug viscosity in z
     }
     /*printf("Pressure: (%f, %f, %f)\n",
         f_pressure.x,
         f_pressure.y,
         f_pressure.z);*/
+        
+    //printf("Viscosity: (%f, %f, %f)\n", f_viscosity.x, f_viscosity.y, f_viscosity.z);
     f_viscosity *= our_mu;
     
     __private float3 f_gravity;
