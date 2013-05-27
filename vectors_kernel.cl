@@ -14,7 +14,7 @@ __constant float envDensity = 0.1f;
 
 int lin(int x, int y, int z);
 float poly6(float r);
-float spiky_grad(float r);
+float3 spiky_grad(float r, float3 r_vec);
 float viscosity_laplace(float r);
 int boundaries(float3 position);
 
@@ -75,8 +75,9 @@ void fluids(
         their_position = initialPosition[i];
         their_pressure = pressure[i];
         their_density = density[i];
-        dis = fast_distance(currentPosition, their_position);
-        f_pressure.x -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
+        dis = fast_distance(currentPosition, their_position) + EPSILON;
+        f_pressure -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(dis, currentPosition - their_position);
+        /*f_pressure.x -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
             dis
         );
         f_pressure.y -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
@@ -84,7 +85,7 @@ void fluids(
         );
         f_pressure.z -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
             dis
-        );      
+        );*/      
         
         f_viscosity.x += their_mass * (their_velocity.x - currentVelocity.x) / their_density * viscosity_laplace(
             dis
@@ -146,13 +147,11 @@ float poly6(float r) {
     else return 0;
 }
 
-float spiky_grad(float r) {
+float3 spiky_grad(float r, float3 r_vec) {
     if (r >= 0 && r <= d) {
-        return -45 / (M_PI_F * pow(d, 6)) * pow(d - r, 2);
+        return -45 / (M_PI_F * pow(d, 6) * r) * pow(d - r, 2) * r_vec;
     }
-    else {
-        return 0;
-    }
+    else return (float3){0.f, 0.f, 0.f};
 }
 
 float viscosity_laplace(float r) {
