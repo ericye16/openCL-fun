@@ -466,6 +466,8 @@ int main() {
     // clEnqueueNDRangeKernel().
     // 'globalWorkSize' is the 1D dimension of the 
     // work-items
+    
+    cl_event event;
     status = clEnqueueNDRangeKernel(
         cmdQueue, 
         kernel, 
@@ -475,11 +477,14 @@ int main() {
         localWorkSize, 
         0, 
         NULL, 
-        NULL);
+        &event);
     if (status != CL_SUCCESS) {
         fprintf(stderr, "Kernels not launched.");
     }
     fprintf(stderr, "Kernel launched and run.\n");
+    
+    clWaitForEvents(1, &event);
+    fprintf(stderr, "Kernel event finished running\n");
 
     //-----------------------------------------------------
     // STEP 12: Read the output buffer back to the host
@@ -488,7 +493,8 @@ int main() {
     // Use clEnqueueReadBuffer() to read the OpenCL output  
     // buffer (bufferC) 
     // to the host output array (C)
-    clEnqueueReadBuffer(
+    
+    status = clEnqueueReadBuffer(
         cmdQueue, 
         bufferPosFinal, 
         CL_TRUE, 
@@ -498,6 +504,8 @@ int main() {
         0, 
         NULL, 
         NULL);
+    checkErr(status);
+    fprintf(stderr, "Buffer read out\n");
 
     // Verify the output
     bool result = true;
@@ -525,6 +533,15 @@ int main() {
     /*clReleaseMemObject(bufferA);
     clReleaseMemObject(bufferB);
     clReleaseMemObject(bufferC);*/
+    clReleaseMemObject(bufferVel);
+    clReleaseMemObject(bufferPos);
+    clReleaseMemObject(bufferVelFinal);
+    clReleaseMemObject(bufferMass);
+    clReleaseMemObject(bufferDensity);
+    clReleaseMemObject(bufferPressure);
+    clReleaseMemObject(bufferMu);
+    clReleaseMemObject(bufferGravity);
+    clReleaseMemObject(bufferGasConstant);
     clReleaseContext(context);
     fprintf(stderr, "Released kernel, program and queue\n");
 
@@ -535,8 +552,10 @@ int main() {
     fprintf(stderr, "Released position\n");
     free(mass);
     fprintf(stderr, "Released mass\n");
-    /*free(position_final);
-    free(velocity_final);*/
+    free(position_final);
+    free(velocity_final);
+    free(mass);
+    free(pressure);
 
     free(platforms);
     free(devices);

@@ -96,7 +96,7 @@ void fluids(
     //combine the forces and stuff
     __private float3 f_total;
     f_total = f_pressure + f_gravity + f_viscosity;
-    nextVelocity = currentVelocity + f_total / currentLocalDensity;
+    nextVelocity = currentVelocity + f_total / currentLocalDensity * dt;
     
     nextPosition = currentPosition + nextVelocity * dt;
     
