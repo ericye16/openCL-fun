@@ -12,6 +12,8 @@
 const int xSize = 32;
 const int ySize = 32;
 const int zSize = 32;
+const cl_float mu = 0.7f;
+const cl_float gasConstant = 0.8f;
 
 const cl_float3 gravity = {0.f, -9.8f, 0.f};
 
@@ -19,6 +21,11 @@ int lin(int x, int y, int z);
 
 void initialize(cl_float3 * position, cl_float3 * velocity, cl_float * mass);
 
+void checkErr(int err) {
+    if (err != CL_SUCCESS) {
+        fprintf(stderr, "SOMETHING TERRIBLE HAPPENED: %i\n", err);
+    }
+}
 
 int main() {
     fprintf(stderr, "asdf\n");
@@ -53,6 +60,7 @@ int main() {
     cl_float3 *velocity_final = NULL;
     cl_float3 *position_final = NULL;
     cl_float *mass = NULL;
+    cl_float * pressure = NULL;
     //cl_float * result_dot = NULL;
     
     // Compute the size of the data 
@@ -67,6 +75,9 @@ int main() {
     position = (cl_float3*)malloc(datasize_pos);
     velocity = (cl_float3*)malloc(datasize_vel);
     mass = (cl_float*)malloc(datasize_pressure);
+    velocity_final = (cl_float3*)malloc(datasize_vel);
+    position_final = (cl_float3*)malloc(datasize_pos);
+    pressure = (cl_float*)malloc(datasize_pressure);
     //result_dot = (cl_float*)malloc(datasize_result);
     
     // Initialize the input data
@@ -168,36 +179,14 @@ int main() {
     
     cl_mem bufferVel;
     cl_mem bufferPos;
-    cl_mem bufferResult;
     cl_mem bufferVelFinal;
     cl_mem bufferPosFinal;
-
-    // Use clCreateBuffer() to create a buffer object (d_A) 
-    // that will contain the data from the host array A
-    /*bufferA = clCreateBuffer(
-        context, 
-        CL_MEM_READ_ONLY,                         
-        datasize, 
-        NULL, 
-        &status);
-
-    // Use clCreateBuffer() to create a buffer object (d_B)
-    // that will contain the data from the host array B
-    bufferB = clCreateBuffer(
-        context, 
-        CL_MEM_READ_ONLY,                         
-        datasize, 
-        NULL, 
-        &status);
-
-    // Use clCreateBuffer() to create a buffer object (d_C) 
-    // with enough space to hold the output data
-    bufferC = clCreateBuffer(
-        context, 
-        CL_MEM_WRITE_ONLY,                 
-        datasize, 
-        NULL, 
-        &status);*/
+    cl_mem bufferMass;
+    cl_mem bufferDensity;
+    cl_mem bufferPressure;
+    cl_mem bufferMu;
+    cl_mem bufferGravity;
+    cl_mem bufferGasConstant;
     
     bufferVel = clCreateBuffer(
         context,
@@ -205,18 +194,78 @@ int main() {
         datasize_vel,
         NULL,
         &status);
+    checkErr(status);
     bufferPos = clCreateBuffer(
         context,
         CL_MEM_READ_ONLY,
         datasize_pos,
         NULL,
         &status);
-    bufferResult = clCreateBuffer(
+    checkErr(status);
+    
+    bufferVelFinal = clCreateBuffer(
         context,
-        CL_MEM_WRITE_ONLY,
-        datasize_result,
+        CL_MEM_READ_WRITE,
+        datasize_vel,
         NULL,
         &status);
+    
+    checkErr(status);
+    bufferPosFinal = clCreateBuffer(
+        context,
+        CL_MEM_READ_WRITE,
+        datasize_vel,
+        NULL,
+        &status);
+        
+    checkErr(status);
+    bufferMass = clCreateBuffer(
+        context,
+        CL_MEM_READ_ONLY,
+        datasize_pressure,
+        NULL,
+        &status);
+        
+    checkErr(status);
+    bufferDensity = clCreateBuffer(
+        context,
+        CL_MEM_READ_WRITE,
+        datasize_pressure,
+        NULL,
+        &status);
+    
+    checkErr(status);
+    bufferPressure = clCreateBuffer(
+        context,
+        CL_MEM_READ_WRITE,
+        datasize_pressure,
+        NULL,
+        &status);
+    checkErr(status);
+    
+    bufferMu = clCreateBuffer(
+        context,
+        CL_MEM_READ_ONLY,
+        sizeof(cl_float),
+        NULL,
+        &status);
+    checkErr(status);
+    
+    bufferGravity = clCreateBuffer(
+        context,
+        CL_MEM_READ_ONLY,
+        sizeof(cl_float3),
+        NULL,
+        &status);
+    checkErr(status);
+    
+    bufferGasConstant = clCreateBuffer(
+        context,
+        CL_MEM_READ_ONLY,
+        sizeof(cl_float),
+        NULL,
+        &status);
+    checkErr(status);
     
     
     fprintf(stderr, "Buffers created\n");
@@ -226,31 +275,6 @@ int main() {
     // STEP 6: Write host data to device buffers
     //----------------------------------------------------- 
     
-    // Use clEnqueueWriteBuffer() to write input array A to
-    // the device buffer bufferA
-    /*status = clEnqueueWriteBuffer(
-        cmdQueue, 
-        bufferA, 
-        CL_FALSE, 
-        0, 
-        datasize,                         
-        A, 
-        0, 
-        NULL, 
-        NULL);
-    
-    // Use clEnqueueWriteBuffer() to write input array B to 
-    // the device buffer bufferB
-    status = clEnqueueWriteBuffer(
-        cmdQueue, 
-        bufferB, 
-        CL_FALSE, 
-        0, 
-        datasize,                                  
-        B, 
-        0, 
-        NULL, 
-        NULL);*/
     status = clEnqueueWriteBuffer(
         cmdQueue,
         bufferVel,
@@ -279,6 +303,17 @@ int main() {
         fprintf(stderr, "Could not write buffer");
     }
     
+    status = clEnqueueWriteBuffer(
+        cmdQueue,
+        bufferMass,
+        CL_FALSE,
+        0,
+        datasize_pressure,
+        pressure,
+        0,
+        NULL,
+        NULL);
+    checkErr(status);    
     
     fprintf(stderr, "Buffers written\n");
 
@@ -293,6 +328,7 @@ int main() {
         (const char**)&kernelCode,                                 
         NULL, 
         &status);
+    checkErr(status);
     free(kernelCode);
     
     fprintf(stderr, "Kernel code created and freed\n");
@@ -319,6 +355,7 @@ int main() {
     // Use clCreateKernel() to create a kernel from the 
     // vector addition function (named "vecadd")
     kernel = clCreateKernel(program, "fluids", &status);
+    checkErr(status);
     fprintf(stderr, "Kernel created\n");
 
     //-----------------------------------------------------
@@ -333,17 +370,70 @@ int main() {
         0, 
         sizeof(cl_mem), 
         &bufferVel);
-    status |= clSetKernelArg(
+    checkErr(status);
+    
+    status = clSetKernelArg(
         kernel, 
         1, 
         sizeof(cl_mem), 
         &bufferPos);
-    status |= clSetKernelArg(
+    checkErr(status);
+    
+    status = clSetKernelArg(
         kernel, 
         2, 
         sizeof(cl_mem), 
-        &bufferResult);
+        &bufferMass);
+    checkErr(status);
     
+    status = clSetKernelArg(
+        kernel,
+        3,
+        sizeof(cl_mem),
+        &bufferDensity);
+    checkErr(status);
+
+    status = clSetKernelArg(
+        kernel,
+        4,
+        sizeof(cl_mem),
+        &bufferPressure);
+    checkErr(status);
+    
+    status = clSetKernelArg(
+        kernel,
+        5,
+        sizeof(cl_mem),
+        &bufferGasConstant);
+    checkErr(status);
+    
+    status = clSetKernelArg(
+        kernel,
+        6,
+        sizeof(cl_mem),
+        &bufferMu);
+    checkErr(status);
+    
+    status = clSetKernelArg(
+        kernel,
+        7,
+        sizeof(cl_mem),
+        &bufferGravity);
+    checkErr(status);
+    
+    status = clSetKernelArg(
+        kernel,
+        8,
+        sizeof(cl_mem),
+        &bufferVelFinal);
+    checkErr(status);
+    
+    status = clSetKernelArg(
+        kernel,
+        9,
+        sizeof(cl_mem),
+        &bufferPosFinal);    
+    checkErr(status);
     fprintf(stderr, "Kernel arguments set\n");
 
     //-----------------------------------------------------
@@ -398,16 +488,16 @@ int main() {
     // Use clEnqueueReadBuffer() to read the OpenCL output  
     // buffer (bufferC) 
     // to the host output array (C)
-    /*clEnqueueReadBuffer(
+    clEnqueueReadBuffer(
         cmdQueue, 
-        bufferResult, 
+        bufferPosFinal, 
         CL_TRUE, 
         0, 
-        datasize_result, 
-        result_dot, 
+        datasize_pos, 
+        position_final, 
         0, 
         NULL, 
-        NULL);*/
+        NULL);
 
     // Verify the output
     bool result = true;

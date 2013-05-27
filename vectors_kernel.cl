@@ -18,16 +18,16 @@ int boundaries(float3 position);
 
 __kernel 
 void fluids(
-    __global float3 * initialVelocity,
-    __global float3 * initialPosition,
-    __global float * mass,
-    __global float * density,
-    __global float3 * pressure,
-    __global float * gasConstant,
-    __global float * mu,
-    __global float3 * gravity,
-    __global float3 * finalVelocity,
-    __global float3 * finalPosition)
+    __global float3 * initialVelocity, //0
+    __global float3 * initialPosition, //1
+    __constant float * mass, //2
+    __global float * density, //3
+    __global float3 * pressure, //4
+    __constant float * gasConstant, //5
+    __constant float * mu, //6
+    __constant float3 * gravity, //7
+    __global float3 * finalVelocity, //8
+    __global float3 * finalPosition) //9
 {
     int xIdx = get_global_id(0);
     int yIdx = get_global_id(1);
