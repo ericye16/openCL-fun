@@ -7,7 +7,7 @@ __constant int xSize = 8;
 __constant int ySize = 8;
 __constant int zSize = 8;
 __constant float d = 32.f;
-__constant float dt = 0.01f;
+__constant float dt = 0.1f;
 __constant float xMax = 40;
 __constant float zMax = 40;
 __constant float envDensity = 0.1f;
@@ -166,7 +166,7 @@ float viscosity_laplace(float r) {
 
 int boundaries(float3 position) {
     int toReturn = 0;
-    /*if (position.x > xMax || position.x < 0) {
+    if (position.x > xMax || position.x < 0) {
         toReturn |= CHANGE_X;
     }
     if (position.y < 0) {
@@ -174,7 +174,7 @@ int boundaries(float3 position) {
     }
     if (position.z > zMax || position.z < 0) {
         toReturn |= CHANGE_Z;
-    }*/
+    }
     return toReturn;    
 }
 

@@ -276,6 +276,57 @@ int main() {
     // STEP 6: Write host data to device buffers
     //----------------------------------------------------- 
     
+    fprintf(stderr, "Buffers written\n");
+
+    //-----------------------------------------------------
+    // STEP 7: Create and compile the program
+    //----------------------------------------------------- 
+     
+    // Create a program using clCreateProgramWithSource()
+    cl_program program = clCreateProgramWithSource(
+        context, 
+        1, 
+        (const char**)&kernelCode,                                 
+        NULL, 
+        &status);
+    checkErr(status);
+    free(kernelCode);
+    
+    fprintf(stderr, "Kernel code created and freed\n");
+
+    // Build (compile) the program for the devices with
+    // clBuildProgram()
+    status = clBuildProgram(
+        program, 
+        numDevices, 
+        devices, 
+        NULL, 
+        NULL, 
+        NULL);
+    if (status != CL_SUCCESS) {
+        fprintf(stderr, "Kernel failed to build");
+        return -1;
+    }
+    //-----------------------------------------------------
+    // STEP 8: Create the kernel
+    //----------------------------------------------------- 
+
+    cl_kernel kernel = NULL;
+
+    // Use clCreateKernel() to create a kernel from the 
+    // vector addition function (named "vecadd")
+    kernel = clCreateKernel(program, "fluids", &status);
+    checkErr(status);
+    fprintf(stderr, "Kernel created\n");
+
+    //-----------------------------------------------------
+    // STEP 9: Set the kernel arguments
+    //----------------------------------------------------- 
+    
+    // Associate the input and output buffers with the 
+    // kernel 
+    // using clSetKernelArg()
+    for (int i = 0; i < 300; i++) {    
     status = clEnqueueWriteBuffer(
         cmdQueue,
         bufferVel,
@@ -351,60 +402,6 @@ int main() {
         NULL,
         NULL);
     checkErr(status);
-    
-    
-        
-    
-    fprintf(stderr, "Buffers written\n");
-
-    //-----------------------------------------------------
-    // STEP 7: Create and compile the program
-    //----------------------------------------------------- 
-     
-    // Create a program using clCreateProgramWithSource()
-    cl_program program = clCreateProgramWithSource(
-        context, 
-        1, 
-        (const char**)&kernelCode,                                 
-        NULL, 
-        &status);
-    checkErr(status);
-    free(kernelCode);
-    
-    fprintf(stderr, "Kernel code created and freed\n");
-
-    // Build (compile) the program for the devices with
-    // clBuildProgram()
-    status = clBuildProgram(
-        program, 
-        numDevices, 
-        devices, 
-        NULL, 
-        NULL, 
-        NULL);
-    if (status != CL_SUCCESS) {
-        fprintf(stderr, "Kernel failed to build");
-        return -1;
-    }
-    //-----------------------------------------------------
-    // STEP 8: Create the kernel
-    //----------------------------------------------------- 
-
-    cl_kernel kernel = NULL;
-
-    // Use clCreateKernel() to create a kernel from the 
-    // vector addition function (named "vecadd")
-    kernel = clCreateKernel(program, "fluids", &status);
-    checkErr(status);
-    fprintf(stderr, "Kernel created\n");
-
-    //-----------------------------------------------------
-    // STEP 9: Set the kernel arguments
-    //----------------------------------------------------- 
-    
-    // Associate the input and output buffers with the 
-    // kernel 
-    // using clSetKernelArg()
     status  = clSetKernelArg(
         kernel, 
         0, 
@@ -567,12 +564,21 @@ int main() {
             for (int z = 0; z < zSize; z++) {
                 thisPos = position_final[lin(x, y, z)];
                 thisVel = velocity_final[lin(x, y, z)];
-                printf("(%f, %f, %f) at (%f, %f, %f) from (%i, %i, %i)\n",
-                    thisPos.x, thisPos.y, thisPos.z,
-                    thisVel.x, thisVel.y, thisVel.z,
-                    x, y, z);
+                printf("%f, %f, %f\n",
+                    thisPos.x, thisPos.y, thisPos.z
+                    //thisVel.x, thisVel.y, thisVel.z,
+                    //x, y, z
+                    );
             }
         }
+    }
+    printf("Run %i=================================================\n", i);
+    free(velocity);
+    free(position);
+    velocity = velocity_final;
+    position = position_final;
+    velocity_final = (cl_float3*)malloc(datasize_vel);
+    position_final = (cl_float3*)malloc(datasize_pos);
     }
 
     //-----------------------------------------------------
