@@ -38,7 +38,7 @@ int main() {
     // OpenCL kernel
     // This code executes on the OpenCL host
     FILE * kernelFile = NULL;
-    kernelFile = fopen("vectors_kernel.cl", "r");
+    kernelFile = fopen("simulation.cl", "r");
     fseek(kernelFile, 0L, SEEK_END);
     size_t programSize;
     programSize = ftell(kernelFile);

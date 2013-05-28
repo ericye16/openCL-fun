@@ -1,3 +1,2 @@
-g++ lesson1.cpp -lOpenCL
-gcc -o vectors vectors.c -lOpenCL -std=gnu99
+gcc -o simulation simulation.c -lOpenCL -std=gnu99
 
