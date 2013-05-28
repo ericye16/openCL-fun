@@ -12,7 +12,8 @@
 const int xSize = 8;
 const int ySize = 8;
 const int zSize = 8;
-const cl_float mu = 0.9f;
+const int numRuns = 300;
+const cl_float mu = 0.1f;
 const cl_float gasConstant = 0.9f;
 
 const cl_float3 gravity = {0.f, -1.f, 0.f};
@@ -326,7 +327,7 @@ int main() {
     // Associate the input and output buffers with the 
     // kernel 
     // using clSetKernelArg()
-    for (int i = 0; i < 300; i++) {    
+    for (int i = 0; i < numRuns; i++) {    
     status = clEnqueueWriteBuffer(
         cmdQueue,
         bufferVel,
@@ -636,7 +637,7 @@ void initialize(cl_float3 * position, cl_float3 * velocity, cl_float * mass) {
         for (int y = 0; y < ySize; y++) {
             for (int z = 0; z < zSize; z++) {
                 position[lin(x,y,z)].x = x;
-                position[lin(x,y,z)].y = y;
+                position[lin(x,y,z)].y = 27 + y - x - z;
                 position[lin(x,y,z)].z = z;
                 
                 velocity[lin(x,y,z)].x = 0;

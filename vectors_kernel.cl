@@ -77,37 +77,13 @@ void fluids(
         their_density = density[i];
         dis = fast_distance(currentPosition, their_position) + EPSILON;
         f_pressure -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(dis, currentPosition - their_position);
-        /*f_pressure.x -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
-            dis
-        );
-        f_pressure.y -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
-            dis
-        );
-        f_pressure.z -= their_mass * (currentPressure + their_pressure) / (2 * their_density) * spiky_grad(
-            dis
-        );*/      
+  
         
-        f_viscosity.x += their_mass * (their_velocity.x - currentVelocity.x) / their_density * viscosity_laplace(
+        f_viscosity += their_mass * (their_velocity - currentVelocity) / their_density * viscosity_laplace(
             dis
         );
-        //printf("%f ", f_viscosity.x);//Debug viscosity in x
-        //printf("%f ", their_density);
-        f_viscosity.y += their_mass * (their_velocity.y - currentVelocity.y) / their_density * viscosity_laplace(
-            dis
-        );
-        //printf("%f ", f_viscosity.y);//Debug viscosity in y
-        f_viscosity.z += their_mass * (their_velocity.z - currentVelocity.z) / their_density * viscosity_laplace(
-            dis
-        );
-        //printf("Vis: (%f, %f, %f)\n", f_viscosity.x, f_viscosity.y, f_viscosity.z);
-        //printf("Delta_Vel: (%f, %f, %f)\n", their_velocity.x - currentVelocity.x, their_velocity.y - currentVelocity.y, their_velocity.z - currentVelocity.z);//Debug viscosity in z
     }
-    /*printf("Pressure: (%f, %f, %f)\n",
-        f_pressure.x,
-        f_pressure.y,
-        f_pressure.z);*/
-        
-    //printf("Viscosity: (%f, %f, %f)\n", f_viscosity.x, f_viscosity.y, f_viscosity.z);
+
     f_viscosity *= our_mu;
     
     __private float3 f_gravity;
