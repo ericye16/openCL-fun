@@ -7,15 +7,15 @@
 // OpenCL includes
 #include <CL/cl.h>
 
-#define FLUID_MASS 13.f //highly arbitrary
+#define FLUID_MASS 1.f //highly arbitrary
 
 const int xSize = 8;
 const int ySize = 8;
 const int zSize = 8;
 const cl_float mu = 0.9f;
-const cl_float gasConstant = 0.01f;
+const cl_float gasConstant = 0.9f;
 
-const cl_float3 gravity = {0.f, -9.8f, 0.f};
+const cl_float3 gravity = {0.f, -1.f, 0.f};
 
 int lin(int x, int y, int z); 
 
