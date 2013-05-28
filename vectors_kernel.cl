@@ -6,10 +6,10 @@
 __constant int xSize = 8;
 __constant int ySize = 8;
 __constant int zSize = 8;
-__constant float d = 32.f;
+__constant float d = 3.f;
 __constant float dt = 0.1f;
-__constant float xMax = 40;
-__constant float zMax = 40;
+__constant float xMax = 10;
+__constant float zMax = 10;
 __constant float envDensity = 0.01f;
 
 int lin(int x, int y, int z);
@@ -169,7 +169,7 @@ int boundaries(float3 position) {
     if (position.x > xMax || position.x < 0) {
         toReturn |= CHANGE_X;
     }
-    if (position.y < 0) {
+    if (position.y < -10) {
         toReturn |= CHANGE_Y;
     }
     if (position.z > zMax || position.z < 0) {
