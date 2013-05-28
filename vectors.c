@@ -13,7 +13,7 @@ const int xSize = 8;
 const int ySize = 8;
 const int zSize = 8;
 const cl_float mu = 0.2f;
-const cl_float gasConstant = .8f;
+const cl_float gasConstant = 0.1f;
 
 const cl_float3 gravity = {0.f, -1.f, 0.f};
 
@@ -572,7 +572,7 @@ int main() {
             }
         }
     }
-    printf("Run %i=================================================\n", i);
+    printf("#Run %i=================================================\n", i);
     free(velocity);
     free(position);
     velocity = velocity_final;

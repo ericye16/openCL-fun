@@ -10,7 +10,7 @@ __constant float d = 32.f;
 __constant float dt = 0.1f;
 __constant float xMax = 40;
 __constant float zMax = 40;
-__constant float envDensity = 0.1f;
+__constant float envDensity = 0.01f;
 
 int lin(int x, int y, int z);
 float poly6(float r);
