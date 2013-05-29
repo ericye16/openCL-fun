@@ -10,9 +10,12 @@ and
 ./run
 </code>
 
-Now there is a csv of points for each time step called output.csv. You can graph this using octave and the attached
+Now there is a csv of points for each time step called output.csv.
+You can graph this using [octave](https://www.gnu.org/software/octave/) and the attached
 graph function:
 <code>
+
 octave
+
 graph
 </code>

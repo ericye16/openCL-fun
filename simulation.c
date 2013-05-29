@@ -270,14 +270,14 @@ int main() {
     checkErr(status);
     
     
-    fprintf(stderr, "Buffers created\n");
+    //fprintf(stderr, "Buffers created\n");
     
         
     //-----------------------------------------------------
     // STEP 6: Write host data to device buffers
     //----------------------------------------------------- 
     
-    fprintf(stderr, "Buffers written\n");
+    //fprintf(stderr, "Buffers written\n");
 
     //-----------------------------------------------------
     // STEP 7: Create and compile the program
@@ -293,7 +293,7 @@ int main() {
     checkErr(status);
     free(kernelCode);
     
-    fprintf(stderr, "Kernel code created and freed\n");
+    //fprintf(stderr, "Kernel code created and freed\n");
 
     // Build (compile) the program for the devices with
     // clBuildProgram()
@@ -472,7 +472,7 @@ int main() {
         sizeof(cl_mem),
         &bufferPosFinal);    
     checkErr(status);
-    fprintf(stderr, "Kernel arguments set\n");
+    //fprintf(stderr, "Kernel arguments set\n");
 
     //-----------------------------------------------------
     // STEP 10: Configure the work-item structure
@@ -494,7 +494,7 @@ int main() {
     localWorkSize[1] = 8;
     localWorkSize[2] = 8;
     
-    fprintf(stderr, "Local and global workgroup sizes set\n");
+    //fprintf(stderr, "Local and global workgroup sizes set\n");
 
     //-----------------------------------------------------
     // STEP 11: Enqueue the kernel for execution
@@ -519,10 +519,10 @@ int main() {
     if (status != CL_SUCCESS) {
         fprintf(stderr, "Kernels not launched.");
     }
-    fprintf(stderr, "Kernel launched and run.\n");
+    //fprintf(stderr, "Kernel launched and run.\n");
     
     clWaitForEvents(1, &event);
-    fprintf(stderr, "Kernel event finished running\n");
+    //fprintf(stderr, "Kernel event finished running\n");
 
     //-----------------------------------------------------
     // STEP 12: Read the output buffer back to the host
@@ -543,7 +543,7 @@ int main() {
         NULL, 
         NULL);
     checkErr(status);
-    fprintf(stderr, "Position read out\n");
+    //fprintf(stderr, "Position read out\n");
     
     status = clEnqueueReadBuffer(
         cmdQueue,
@@ -574,6 +574,7 @@ int main() {
         }
     }
     printf("#Run %i=================================================\n", i);
+    fprintf(stderr, "\rIteration %i of %i", i + 1, numRuns);
     free(velocity);
     free(position);
     velocity = velocity_final;
@@ -603,7 +604,7 @@ int main() {
     clReleaseMemObject(bufferGravity);
     clReleaseMemObject(bufferGasConstant);
     clReleaseContext(context);
-    fprintf(stderr, "Released kernel, program and queue\n");
+    fprintf(stderr, "\nReleased kernel, program and queue\n");
 
     // Free host resources
     free(velocity);
